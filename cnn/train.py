@@ -52,29 +52,34 @@ logging.getLogger().addHandler(fh)
 
 CIFAR_CLASSES = 10
 
+dtype = torch.cuda.float if torch.cuda.is_available() else torch.float
+
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
 
 def main():
   if not torch.cuda.is_available():
     logging.info('no gpu device available')
-    sys.exit(1)
+    # sys.exit(1)
 
   np.random.seed(args.seed)
-  torch.cuda.set_device(args.gpu)
+  # torch.cuda.set_device(args.gpu)
   cudnn.benchmark = True
   torch.manual_seed(args.seed)
-  cudnn.enabled=True
-  torch.cuda.manual_seed(args.seed)
+  cudnn.enabled = True
+
+  # torch.cuda.manual_seed(args.seed)
+  torch.manual_seed(args.seed)
+
   logging.info('gpu device = %d' % args.gpu)
   logging.info("args = %s", args)
 
   genotype = eval("genotypes.%s" % args.arch)
-  model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype)
-  model = model.cuda()
+  model = Network(args.init_channels, CIFAR_CLASSES, args.layers, args.auxiliary, genotype).to(device)
 
   logging.info("param size = %fMB", utils.count_parameters_in_MB(model))
 
-  criterion = nn.CrossEntropyLoss()
-  criterion = criterion.cuda()
+  criterion = nn.CrossEntropyLoss().to(device)
   optimizer = torch.optim.SGD(
       model.parameters(),
       args.learning_rate,
@@ -115,8 +120,8 @@ def train(train_queue, model, criterion, optimizer):
   model.train()
 
   for step, (input, target) in enumerate(train_queue):
-    input = Variable(input).cuda()
-    target = Variable(target).cuda(async=True)
+    input = Variable(input)
+    target = Variable(target)
 
     optimizer.zero_grad()
     logits, logits_aux = model(input)
@@ -130,9 +135,9 @@ def train(train_queue, model, criterion, optimizer):
 
     prec1, prec5 = utils.accuracy(logits, target, topk=(1, 5))
     n = input.size(0)
-    objs.update(loss.data[0], n)
-    top1.update(prec1.data[0], n)
-    top5.update(prec5.data[0], n)
+    objs.update(loss.data.item(), n)
+    top1.update(prec1.data.item(), n)
+    top5.update(prec5.data.item(), n)
 
     if step % args.report_freq == 0:
       logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
@@ -147,8 +152,8 @@ def infer(valid_queue, model, criterion):
   model.eval()
 
   for step, (input, target) in enumerate(valid_queue):
-    input = Variable(input, volatile=True).cuda()
-    target = Variable(target, volatile=True).cuda(async=True)
+    input = Variable(input, volatile=True, dtype=dtype)
+    target = Variable(target, volatile=True, dtype=dtype)
 
     logits, _ = model(input)
     loss = criterion(logits, target)
