@@ -52,10 +52,7 @@ logging.getLogger().addHandler(fh)
 
 CIFAR_CLASSES = 10
 
-dtype = torch.cuda.float if torch.cuda.is_available() else torch.float
-
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
 
 def main():
   if not torch.cuda.is_available():
@@ -156,8 +153,8 @@ def infer(valid_queue, model, criterion):
   model.eval()
 
   for step, (input, target) in enumerate(valid_queue):
-    input = Variable(input, volatile=True, dtype=dtype)
-    target = Variable(target, volatile=True, dtype=dtype)
+    input = Variable(input, volatile=True).to(device)
+    target = Variable(target, volatile=True).to(device)
 
     logits, _ = model(input)
     loss = criterion(logits, target)
