@@ -119,6 +119,8 @@ def train(train_queue, model, criterion, optimizer):
   top5 = utils.AvgrageMeter()
   model.train()
 
+  time_0 = time.time()
+
   for step, (input, target) in enumerate(train_queue):
     input = Variable(input)
     target = Variable(target)
@@ -140,7 +142,9 @@ def train(train_queue, model, criterion, optimizer):
     top5.update(prec5.data.item(), n)
 
     if step % args.report_freq == 0:
-      logging.info('train %03d %e %f %f', step, objs.avg, top1.avg, top5.avg)
+      dtime = time.time() - time_0
+      logging.info('train %03d %e %f %f %f', step, objs.avg, top1.avg, top5.avg, dtime)
+      time_0 = time.time()
 
   return top1.avg, objs.avg
 
